@@ -10,6 +10,11 @@
     5) show all links that are farthest away from start page;
     6) show all outgoing links;
     etc.
+    
+    We chose to have the prefix be a find function as opposed to a begin with as prefixes normally are.
+    This is because we believe it would be much more useful for our target users. For instance if carleton.edu
+    is the prefix given, the search space for a prefix would be empty because urls are www.carleton.edu or apps.carleton.edu.
+    If the user wants to search cs.carleton.edu for example our program still works as if it were a prefix.
 '''
 
 import sys
@@ -17,45 +22,61 @@ import re
 import urllib2
 import argparse
 import time
+import urlparse
 
-'''
-    Class: WebPage
-    Stores its URL and important information (e.g. HTML code, its children links, etc.)
-'''
+
 class WebPage:
-    
+    '''
+    Stores a URL and important information (e.g. HTML code, its children links, etc.)
+    '''
     def __init__(self, link, distance, p):
         self.parentURL = p
         self.givenURL = link
-        self.pageHTML = self.readURL(self.givenURL)
+        self.brokenLinks = []
         self.distanceFromHome = distance
+        self.pageHTML = self.readURL(self.givenURL)
+        self.children = []
         if(self.pageHTML):
-            self.children = self.get_all_href_values(self.pageHTML)
+            self.children = self.getAllHrefValues(self.pageHTML)
+            
     def getParentURL(self):
         return self.parentURL
+    
     def getGivenURL(self):
         return self.givenURL
+    
     def setDistanceFromHome(self, d):
         self.distanceFromHome = d
+        
     def getDistanceFromHome(self):
         return self.distanceFromHome
     
     def getChildren(self):
+        '''
+        @return list children links from the given url
+        '''
         return self.children
     
-    def get_all_href_values(self, text):
-        href_pattern = re.compile(r'<a.*?href="(.*?)"')
+    def getAllHrefValues(self, text):
+        '''
+        @param text: A string of html text
+        @return: a list of links from the text 
+        '''
+        hrefPattern = re.compile(r'<a.*?href="(.*?)"')
         links = [] 
-        for href_value in re.findall(href_pattern, text): 
-            links.append(href_value)
+        for hrefValue in re.findall(hrefPattern, text): 
+            links.append(hrefValue)
         return links
     
-    '''
-        Credit: Jeff Ondich
-        Modified by Eric Ewing.
-        If the given link is broken, stored the link and its parent URL as a tuple in a list.
-    '''
+
     def readURL(self, link):
+        '''
+            @param link: A link to read
+            @return: A string of html from link if a working link is given, else returns false.
+            if a link is broken add to list of broken links
+            @author: Jeff Ondich
+            
+        '''
         try: 
             request = urllib2.Request(link) 
             response = urllib2.urlopen(request) 
@@ -63,11 +84,17 @@ class WebPage:
             response.close()
             return text_of_requested_page
         except Exception, e:
-            global brokenLinks
-            t = link, self.parentURL
-            brokenLinks.append(t)
+            self.addBrokenLink(link, self.getParentURL())
+            return False
 
-
+    def addBrokenLink(self, brokenLink, parent):
+        '''
+        @param brokenLink: broken link
+        @param parent: link from which the broken link was taken
+        '''
+        t = brokenLink, parent
+        self.brokenLinks.append(t)
+        
 '''
     Crawls URLs from a starting url within the given prefix. If no prefix is given
     the prefix is the domain of the starting url.
@@ -80,7 +107,8 @@ class WebCrawler:
         self.maxDistance = 0
         self.linksVisited = 0
         self.numDuplicateLinks = 0
-
+        self.map = {}
+        self.externalLinks = []
     '''
         If a prefix is given, return the prefix.
         If no prefix is given, parse the domain as a prefix from URL being searched.
@@ -175,18 +203,6 @@ class WebCrawler:
     '''
     def isExternalURL(self, url):
         return url.find(self.prefix[self.prefix.find('.') + 1:]) == -1
-            
-    '''
-        Credit: Jeff Ondich
-        Extract href links from text.
-    '''
-    def get_all_href_values(self, text):
-     
-        href_pattern = re.compile(r'<a.*?href="(.*?)"') 
-        links = [] 
-        for href_value in re.findall(href_pattern, text): 
-            links.append(href_value) 
-        return links
     
     '''
     1) Find links that can't get home;
@@ -223,7 +239,7 @@ class WebCrawler:
     '''
         return a list of links that are farthest from start page being searched
     '''
-    def getMaxDistanceLinks(self):
+    def getMaxDistancePath(self):
         childrenList= self.map.values()
         allLinks = []
         
@@ -231,12 +247,11 @@ class WebCrawler:
         for i in range(len(childrenList)):
             for j in range(len(childrenList[i])):
                 allLinks.append(childrenList[i][j])
-    
-        maxDistancePages = []
+                
+        paths = []
         for i in range(len(allLinks)):
             for j in range(len(allLinks)):
                 if(allLinks[j].getGivenURL() == allLinks[i].getGivenURL()):
-                    
                     minDistance = min(allLinks[i].getDistanceFromHome(), allLinks[j].getDistanceFromHome())
                     allLinks[j].setDistanceFromHome(minDistance)
                     allLinks[i].setDistanceFromHome(minDistance)
@@ -244,8 +259,6 @@ class WebCrawler:
                         maxDistancePages = []
                         maxDistancePages.append(allLinks[i].getGivenURL())
                         self.maxDistance = allLinks[i].getDistanceFromHome()
-                    elif(allLinks[i].getDistanceFromHome() == self.maxDistance):
-                        maxDistancePages.append(allLinks[i].getGivenURL())
         return maxDistancePages
 
     '''
@@ -258,68 +271,61 @@ class WebCrawler:
         return a list of tuples including broken links and their parent URLs
     '''
     def getBrokenLinks(self):
-        return self.brokenLinks
+        brokenLinks = []
+        for url in self.map.values:
+            for i in range(len(self.map[url])):
+                for j in range(len(self.map[url][i].getBrokenLinks())):
+                    brokenLinks.append(self.map[url][i].getBrokenLinks.pop())
+        return brokenLinks
       
 def main(arguments):
-    global brokenLinks
-    brokenLinks = []
-    linklimit = 0
-    if(arguments.linklimit):
-        linklimit = int(arguments.linklimit)
-    else:
-        linklimit = 1000
-    crawler = WebCrawler(arguments.url, arguments.searchprefix, linklimit)
+    linkLimit = arguments.linklimit
 
+    crawler = WebCrawler(arguments.url, arguments.searchprefix, linkLimit)
     crawler.beginCrawl()
-   
-    linksCantGetHome = crawler.getStrandedLinks()
     
-    #print report
-    if(arguments.actionsummary):
-        print 'Files Found: ' + str(crawler.getNumLinksCrawled())
-        print 'External Files: '
-        externalLinks = crawler.getExternalLinks()
-        for i in range(len(externalLinks)):
-            print externalLinks[i]
-        maxDistanceLinks =  crawler.getMaxDistanceLinks()
-        print 'Longest Path Depth: ' + str(crawler.getMaxDistance())
-        for i in range(len(maxDistanceLinks)):
-            print maxDistanceLinks[i]
-        print 'CantGetHome: '
-        strandedLinks = crawler.getStrandedLinks()
-        for i in range(len(strandedLinks)):
-            print strandedLinks[i]
-        
-    elif(arguments.brokenlinks):
-        print 'broken links: ' 
-        for i in range(len(brokenLinks)):
-            print brokenLinks[i]
-    elif(arguments.outgoinglinks):
-        crawler.getExternalLinks()
+    if(arguments.action == 'brokenlinks'):
+        printBrokenLinks(crawler)
+    if(arguments.action == 'outgoinglinks'):
+        printOutGoingLinks(crawler)
     else:
-        print 'Files Found: ' + str(crawler.getNumLinksCrawled())
-        print 'External Files: '
-        externalLinks = crawler.getExternalLinks()
-        for i in range(len(externalLinks)):
-            print externalLinks[i]
-        maxDistanceLinks =  crawler.getMaxDistanceLinks()
-        print 'Longest Path Depth: ' + str(crawler.getMaxDistance())
-        for i in range(len(maxDistanceLinks)):
-            print maxDistanceLinks[i]
-        print 'Can\'t Get Home: '
-        strandedLinks = crawler.getStrandedLinks()
-        for i in range(len(strandedLinks)):
-            print strandedLinks[i]
+        printActionSummary(crawler)
+        
     
+def printBrokenLinks(crawler):
+    brokenLinks = crawler.getBrokenLinks()
+    print 'broken links: ' 
+    for i in range(len(brokenLinks)):
+        print brokenLinks[i]
+
+def printOutGoingLinks(crawler):
+    outgoingLinks = crawler.getExternalLinks()
+    for i in range(len(outgoingLinks)):
+        print brokenLinks[i]
     
+def printActionSummary(crawler):
+    linksCantGetHome = crawler.getStrandedLinks()
+    print 'Files Found: ' + str(crawler.getNumLinksCrawled())
+    print 'External Files: '
+    externalLinks = crawler.getExternalLinks()
+    for i in range(len(externalLinks)):
+        print externalLinks[i]
+    maxDistancePath =  crawler.getMaxDistancePath()
+    print 'Longest Path Depth: ' + str(crawler.getMaxDistance())
+    for i in range(len(maxDistancePath)):
+        print maxDistancePath[i]
+    print 'Can\'t Get Home: '
+    strandedLinks = crawler.getStrandedLinks()
+    for i in range(len(strandedLinks)):
+        print strandedLinks[i]
+
+
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Produce a report on the web page specified on the command line.')
-    arg_parser.add_argument('url', help='Include only words that have a sortkey starting with this prefix.')
-    arg_parser.add_argument('--linklimit', help='Maximum number of links to be searched; default = 1000.')
+    arg_parser = argparse.ArgumentParser(description='Produce a report on the web page specified by the command line.')
+    arg_parser.add_argument('url', help='The required starting url from which a crawl will begin')
+    arg_parser.add_argument('--linklimit', type = int, default = 1000, help='Maximum number of links to be searched; default = 1000.')
     arg_parser.add_argument('--searchprefix',help='Include only web pages that include the prefix; if no prefix specified, the domain of the URL is treated as a prefix.')   
-    arg_parser.add_argument('--brokenlinks', action='store_true', help='Show broken links.')
-    arg_parser.add_argument('--outgoinglinks', action='store_true',help='Show outgoing links.')
-    arg_parser.add_argument('--actionsummary', action='store_true',help='Print a summary of the crawl.')
+    arg_parser.add_argument('--action', choices=['brokenlinks', 'outgoinglinks', 'summary'], default = 'summary', type=str, help = 'brokenlinks will print out a list of broken links and the pages on which they occur. Outgoing links prints out a list of links that go outside of the search domain. Summary prints out the number of files found, the longest path found and the distance of that path, and a list of urls that can\'t get home')
     arguments = arg_parser.parse_args()
 
     main(arguments)
