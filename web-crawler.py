@@ -212,17 +212,22 @@ class WebCrawler:
        stranded = True
        strandedLinks = []
        for key in self.map:
-            for i in range(len(self.map[key])):
-                for j in range(len(self.map[key][i].getChildren())):
-                    if(key == self.homeURL or key == self.homeURL + '/' or key + '/' == self.homeURL):
-                        stranded = False
-                    elif(self.map[key][i].getChildren()[j] == self.homeURL or self.map[key][i].getChildren()[j] == self.homeURL + '/'):
-                        stranded = False      
-                if(stranded and key not in strandedLinks):
-                    strandedLinks.append(key)
-            stranded = True
+            if(not isStrandedLink(key)):
+                strandedLinks.append(key)
        return strandedLinks
-   
+    
+    
+    def isStrandedLink(self, link):
+       for i in range(len(self.map[link])):
+                for j in range(len(self.map[link][i].getChildren())):
+                    stranded = True
+                    if(link == self.homeURL or key == self.homeURL + '/' or link + '/' == self.homeURL):
+                        stranded = False
+                    elif(self.map[link][i].getChildren()[j] == self.homeURL or self.map[link][i].getChildren()[j] == self.homeURL + '/'):
+                        stranded = False  
+       return stranded
+       
+       
     '''
         return the number of unique links crawled.
     '''
