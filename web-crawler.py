@@ -30,6 +30,11 @@ class WebPage:
     Stores a URL and important information (e.g. HTML code, its children links, etc.)
     '''
     def __init__(self, link, distance, p):
+        '''
+        @param link: the url of the web page
+        @param distance: distance from home
+        @param p: the parent url from which the webpage was accessed  
+        '''
         self.parentURL = p
         self.givenURL = link
         self.brokenLinks = []
@@ -40,20 +45,32 @@ class WebPage:
             self.children = self.getAllHrefValues(self.pageHTML)
             
     def getParentURL(self):
+        '''
+        @return: the url from which this page was accessed
+        '''
         return self.parentURL
     
     def getGivenURL(self):
+        '''
+        @return: returns a string of the url for the web page
+        '''
         return self.givenURL
     
     def setDistanceFromHome(self, d):
+        '''
+        @param d: the distance from home
+        '''
         self.distanceFromHome = d
         
     def getDistanceFromHome(self):
+        '''
+        @return: the distance from the home page in a given path(not necessarily the shortest possible path)
+        '''
         return self.distanceFromHome
     
     def getChildren(self):
         '''
-        @return list children links from the given url
+        @return: list children links from the given url
         '''
         return self.children
     
@@ -95,12 +112,18 @@ class WebPage:
         t = brokenLink, parent
         self.brokenLinks.append(t)
         
-'''
+
+class WebCrawler:
+    '''
     Crawls URLs from a starting url within the given prefix. If no prefix is given
     the prefix is the domain of the starting url.
-'''
-class WebCrawler:
+    '''
     def __init__(self, homeURL, prefix, linksToVisit):
+        '''
+        @param homeURL: the web page from which to begin the crawl
+        @param prefix: the search domain, will not crawl links outside of domain
+        @param linksToVisit: number of links to visit during the crawl
+        '''
         self.homeURL = homeURL
         self.prefix = self.getCorrectPrefix(prefix)
         self.linksToVisit = linksToVisit
@@ -114,6 +137,13 @@ class WebCrawler:
         If no prefix is given, parse the domain as a prefix from URL being searched.
     '''
     def getCorrectPrefix(self, prefixGiven):
+        '''
+        @param prefixGiven: the prefix passed to __init__
+        @return: if no prefix was passed to __init__ then gets the search domain from the home page url, or else it returns the prefix given
+        @note: If a prefix includes http:// then it greatly reduces the number of crawl-able web pages.
+        @note: .com, .edu ... are not the only options however it is too hard to cut the string with a general case and this covers
+        a large portion of the web we want to deal with.
+        '''
         if(not prefixGiven):
             prefixGiven = self.homeURL
             if(self.homeURL.find('http://') == 0):
@@ -136,6 +166,13 @@ class WebCrawler:
         (i.e. remove "#something", "mailto:some_address", etc.)
     '''
     def fixGivenURL(self, url, currentDomain):
+        '''
+        @param url: the url that requires fixing to a callable url
+        @param currentDomain: the current domain of the website being crawled. Note that this has nothing to do with the search domain.
+        @return: A url that is readable by urllib2 (most of the time).
+        @bug: if a link is only //link then we try to add it to the current domain but it does not work all of the time.
+        If it does not work we add it to broken links even though it could still be working on the actual website.
+        '''
         if(url.startswith('#')):
             return False
         elif(url.find('javascript:') != -1 or url.find('.java') != -1):
@@ -160,8 +197,10 @@ class WebCrawler:
             url = 'http://' + url
         return url
     
-    '''When first called crawl begins crawling recursively from the given home page'''
     def beginCrawl(self):
+        '''
+        When first called crawl begins crawling recursively from the given home page
+        '''
         homePage = WebPage(self.homeURL, 0, '')
         self.crawlURL(homePage, 0)
 
