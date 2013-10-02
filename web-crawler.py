@@ -236,54 +236,59 @@ class WebCrawler:
                     return
            
     
-    
-    '''
-        Return true if the url is inside the searched domain (or prefix if given)
-    '''
     def isExternalURL(self, url):
+        '''
+        @param url: a url to be examined
+        @return: True if the url is inside the search domain and false if it is not in the search domain 
+        '''
         return url.find(self.prefix[self.prefix.find('.') + 1:]) == -1
     
-    '''
-    1) Find links that can't get home;
-    2) Return a list of links that can't get home
-    '''
+    
     def getStrandedLinks(self):
-       stranded = True
-       strandedLinks = []
-       for key in self.map:
-            if(not isStrandedLink(key)):
-                strandedLinks.append(key)
-       return strandedLinks
+        '''
+        @return: returns a list of links that do not link to the homepage
+        '''
+        stranded = True
+        strandedLinks = []
+        for key in self.map:
+             if(not isStrandedLink(key)):
+                 strandedLinks.append(key)
+        return strandedLinks
     
     
     def isStrandedLink(self, link):
-       for i in range(len(self.map[link])):
+        '''
+        @param link: a url which needs to be checked to see if it cannot reach home
+        @return: return true if the link does not have a link to the homepage and false if the link does have a link to the homepage
+        '''
+        for i in range(len(self.map[link])):
                 for j in range(len(self.map[link][i].getChildren())):
                     stranded = True
                     if(link == self.homeURL or key == self.homeURL + '/' or link + '/' == self.homeURL):
                         stranded = False
                     elif(self.map[link][i].getChildren()[j] == self.homeURL or self.map[link][i].getChildren()[j] == self.homeURL + '/'):
                         stranded = False  
-       return stranded
+        return stranded
        
-       
-    '''
-        return the number of unique links crawled.
-    '''
     def getNumLinksCrawled(self):
+        '''
+        @return: the number of unique links crawled.
+        '''
         return self.linksVisited - self.numDuplicateLinks
     
-    '''
-        return greatest distance from searched start page to farthest webpage;
-        if there are multiple paths to a same page, we compare the shortest paths
-    '''    
     def getMaxDistance(self):
+        '''
+        @return: the length of the longest searched path from the home page
+        '''
         return self.maxDistance
     
-    '''
-        return a list of links that are farthest from start page being searched
-    '''
     def getMaxDistancePath(self):
+        '''
+        @todo: fix it
+        @return: a list of links that form the longest searched path from the home page to the farthest web page
+        @note: if there are multiple paths to a same page, we compare the shortest paths
+
+        '''
         childrenList= self.map.values()
         allLinks = []
         
@@ -305,16 +310,17 @@ class WebCrawler:
                         self.maxDistance = allLinks[i].getDistanceFromHome()
         return maxDistancePages
 
-    '''
-        return a list of links that are outside the searched domain
-    '''
+
     def getExternalLinks(self):
+        '''
+        @return: a list of links that are outside the searched domain
+        '''
         return self.externalLinks
     
-    '''
-        return a list of tuples including broken links and their parent URLs
-    '''
     def getBrokenLinks(self):
+        '''
+        @return: a list of tuples formatted so that each item in the list is (broken link, parent url)
+        '''
         brokenLinks = []
         for url in self.map.values:
             for i in range(len(self.map[url])):
@@ -323,6 +329,10 @@ class WebCrawler:
         return brokenLinks
       
 def main(arguments):
+    '''
+    @param arguments: command line arguments to be read
+    @note: creates a crawler, runs the crawler, and prints out a summary
+    '''
     linkLimit = arguments.linklimit
 
     crawler = WebCrawler(arguments.url, arguments.searchprefix, linkLimit)
@@ -337,17 +347,29 @@ def main(arguments):
         
     
 def printBrokenLinks(crawler):
+    '''
+    @param crawler: The crawler from which the report is to be printed
+    @note: prints a list of broken links 1 per line.
+    '''
     brokenLinks = crawler.getBrokenLinks()
     print 'broken links: ' 
     for i in range(len(brokenLinks)):
         print brokenLinks[i]
 
 def printOutGoingLinks(crawler):
+    '''
+    @param crawler: The crawler from which the report is to be printed
+    @note: prints a list of outgoing links 1 per line
+    '''
     outgoingLinks = crawler.getExternalLinks()
     for i in range(len(outgoingLinks)):
         print brokenLinks[i]
     
 def printActionSummary(crawler):
+    '''
+    @param crawler: The crawler from which the report is to be printed
+    @note: prints a list of outgoing links, the farthest page from home, the path to the farthest page, and a list of pages that can't get home
+    '''
     linksCantGetHome = crawler.getStrandedLinks()
     print 'Files Found: ' + str(crawler.getNumLinksCrawled())
     print 'External Files: '
