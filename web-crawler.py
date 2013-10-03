@@ -101,6 +101,7 @@ class WebPage:
             response.close()
             return text_of_requested_page
         except Exception, e:
+            print 'broken link'
             self.addBrokenLink(link, self.getParentURL())
             return False
 
@@ -111,7 +112,11 @@ class WebPage:
         '''
         t = brokenLink, parent
         self.brokenLinks.append(t)
-        
+    def getBrokenLinks(self):
+        '''
+        @return: a list of broken links on the webpage
+        '''
+        return self.brokenLinks
 
 class WebCrawler:
     '''
@@ -212,6 +217,7 @@ class WebCrawler:
         '''do not duplicate key'''
         if(self.map.has_key(page.getGivenURL())):
             self.numDuplicateLinks += 1
+            print self.numDuplicateLinks
         else:
             time.sleep(.5) #Courtesy
             listOfChildren = []
@@ -221,7 +227,6 @@ class WebCrawler:
                     childURL = self.fixGivenURL(page.getChildren()[i], page.getGivenURL())
                 else:
                     return
-                global externalWebPages
                 if(childURL):
                     if(self.isExternalURL(childURL)):
                         self.externalLinks.append(childURL)
@@ -251,7 +256,7 @@ class WebCrawler:
         stranded = True
         strandedLinks = []
         for key in self.map:
-             if(not isStrandedLink(key)):
+             if(self.isStrandedLink(key)):
                  strandedLinks.append(key)
         return strandedLinks
     
@@ -263,12 +268,11 @@ class WebCrawler:
         '''
         for i in range(len(self.map[link])):
                 for j in range(len(self.map[link][i].getChildren())):
-                    stranded = True
-                    if(link == self.homeURL or key == self.homeURL + '/' or link + '/' == self.homeURL):
-                        stranded = False
+                    if(link == self.homeURL or link == self.homeURL + '/' or link + '/' == self.homeURL):
+                        return False
                     elif(self.map[link][i].getChildren()[j] == self.homeURL or self.map[link][i].getChildren()[j] == self.homeURL + '/'):
-                        stranded = False  
-        return stranded
+                        return False
+        return True
        
     def getNumLinksCrawled(self):
         '''
@@ -322,10 +326,10 @@ class WebCrawler:
         @return: a list of tuples formatted so that each item in the list is (broken link, parent url)
         '''
         brokenLinks = []
-        for url in self.map.values:
+        for url in self.map:
             for i in range(len(self.map[url])):
                 for j in range(len(self.map[url][i].getBrokenLinks())):
-                    brokenLinks.append(self.map[url][i].getBrokenLinks.pop())
+                    brokenLinks.append(self.map[url][i].getBrokenLinks().pop())
         return brokenLinks
       
 def main(arguments):
@@ -337,7 +341,7 @@ def main(arguments):
 
     crawler = WebCrawler(arguments.url, arguments.searchprefix, linkLimit)
     crawler.beginCrawl()
-    
+    print crawler.map
     if(arguments.action == 'brokenlinks'):
         printBrokenLinks(crawler)
     if(arguments.action == 'outgoinglinks'):
